@@ -1,6 +1,169 @@
 <!doctype html>
 <html>
+
+<head>
+  <meta charset="utf-8">
+  <title>On-Arrival Testing Data Retriever</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sgds-govtech@1.3.17/css/sgds.css" />
+  <link rel="stylesheet" href="style.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.js"></script>
+  <script src="js/exceljs.min.js"></script>
+  <script src="index.js"></script>
+</head>
+
 <body>
-  <h1>Hello World</h1>
+<section class="sgds-section">
+  <div class="sgds-container content">
+    <div class="row">
+      <div class="col">
+        <h1>On-Arrival Testing Data Retriever</h1>
+        <p>
+          Use this tool to check the covid test results of a list of individuals, as identified by their UINs (NRICs/FINs).
+        </p>
+        <p>
+          The supplied IDs will be transmitted to the Covid Management Backbone (CMB).
+          The data will be sent directly from your computer to the CMB, and the response received directly by your computer.
+          No data is handled or stored by this tool's servers.
+        </p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <h3>Step 1: Read data</h3>
+        <p>Load a list of IDs from an Excel file.</p>
+        <p>
+            The file must be an Excel <code>.xlsx</code> workbook, without encryption (password protection).
+        </p>
+        <p>Cell A1 must contain "UIN" as the header, with data starting from row 2.</p>
+        <p>Columns B must contain the Nationalities in 2-letter country code.</p>
+        <p>Columns C must contain the Passport numbers.</p>
+        <p>
+          <input type="file" id="import-files" accept="application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+          <button class="sgds-button is-secondary" id="import-file-button"><span class="sgds-icon sgds-icon-upload" role="img" aria-label="upload"></span> Read Excel file</button>
+        </p>
+      </div>
+      <div class="col">
+        <h5>Read status</h5>
+        <table class="table">
+          <tr>
+            <th>Rows read (excl empty)</th>
+            <td><span id="render-import-totalRead">0</span></td>
+          </tr>
+          <tr>
+            <th>Valid, unique IDs</th>
+            <td><span id="render-import-totalInputUins">0</span></td>
+          </tr>
+          <tr>
+            <th>Duplicate IDs</th>
+            <td><span id="render-import-totalDuplicateUins">0</span></td>
+          </tr>
+          <tr>
+            <th>Invalid IDs</th>
+            <td><span id="render-import-totalInvalidUins">0</span></td>
+          </tr>
+        </table>
+        <p>
+          Workbooks/worksheets/cells that do not meet format requirements are ignored.
+          UINs that do not have correct checksum will also be ignored.
+          (M-series FINs are not supported yet.)
+        </p>
+        <p>To clear the read data, reload this page.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <h3>Step 2: Retrieve data</h3>
+        <p>You must have valid connection details to access the Vaccine System.</p>
+        <div class="field">
+          <label class="label" for="api-baseurl">API Base URL</label>
+          <div class="control">
+            <div class="select">
+              <select id="api-baseurl">
+                <option value="https://api.covid-ops.gov.sg/v2">https://api.covid-ops.gov.sg/v2</option>
+                <option value="https://api-staging.covid-ops.gov.sg/v2">https://api-staging.covid-ops.gov.sg/v2</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label" for="api-key">API Key</label>
+          <div class="control">
+            <input class="input" type="text" id="api-key" value=""/>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label" for="start_timestamp">Start Timestamp (In Unix Epoch). Leave blank if you're unsure.</label>
+          <div class="control">
+            <input class="input" type="text" id="start_timestamp" value=""/>
+          </div>
+        </div>
+        <p>
+          <button class="sgds-button is-secondary" id="trigger-process" disabled>Retrieve Covid Test Results</button>
+        </p>
+      </div>
+      <div class="col">
+        <h5>Retrieval status</h5>
+        <table class="table">
+          <tr>
+            <th>IDs pending retrieval</th>
+            <td><span id="render-retrieve-progress">0 of 0</span></td>
+          </tr>
+          <tr>
+            <th>Retrievals in process</th>
+            <td><span id="render-retrieve-countdown">0</span></td>
+          </tr>
+          <tr>
+            <th>IDs with Positive Covid test result</th>
+            <td><span id="render-positive-test">0</span></td>
+          </tr>
+          <tr>
+            <th>IDs with Negative Covid test result</th>
+            <td><span id="render-negative-test">0</span></td>
+          </tr>
+          <tr>
+            <th>IDs with Pending Covid test result</th>
+            <td><span id="render-pending-test">0</span></td>
+          </tr>
+          <tr>
+            <th>IDs with Invalid test result</th>
+            <td><span id="render-invalid-test">0</span></td>
+          </tr>
+          <tr>
+            <th>IDs with no test result</th>
+            <td><span id="render-no-test">0</span></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <h3>Step 3: Write data</h3>
+        <p>Save the retrieved data to an Excel <code>.xlsx</code> workbook.</p>
+        <div class="field">
+          <label class="label" for="export-mode">Export mode</label>
+          <div class="control">
+            <div class="select">
+              <select id="export-mode">
+                <option value="excel">Excel</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <button class="sgds-button is-secondary" id="export-file-button" disabled><span class="sgds-icon sgds-icon-download" role="img" aria-label="download"></span> Export Excel file</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <h5>Error messages</h5>
+        <pre><span id="render-errors"></span></pre>
+      </div>
+    </div>
+  </div>
+</section>
 </body>
 </html>

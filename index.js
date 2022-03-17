@@ -340,6 +340,12 @@ function exportExcelFile(mode) {
     { header: 'Covid test result', key: 'result', width: 15 },
     { header: 'Swab Reason', key: 'swab_reason', width: 15 },
     { header: 'Produced At', key: 'produced_at', width: 15 },
+    { header: 'Administration Mode', key: 'administration_mode', width: 15 },
+    { header: 'Test Type', key: 'test_type', width: 15 },
+    { header: 'Test Classification', key: 'test_classification', width: 15 },
+    { header: 'Test Location Type', key: 'test_location_type', width: 15 },
+    { header: 'Test Regime Level', key: 'test_regime_level', width: 15 },
+    { header: 'Remarks', key: 'remarks', width: 15 },
     ...remainingColumnHeaders
   ]
 
@@ -361,6 +367,12 @@ function exportExcelFile(mode) {
       obj['result'] = results[0]['result'];
       obj['swab_reason'] = results[0]['swab_reason']
       obj['produced_at'] = new Date(results[0]['produced_at']).toLocaleString()
+      obj['administration_mode'] = results[0]['administration_mode'];
+      obj['test_type'] = results[0]['test_type'];
+      obj['test_classification'] = results[0]['test_classification'];
+      obj['test_location_type'] = results[0]['test_location_type'];
+      obj['test_regime_level'] = results[0]['test_regime_level'];
+      obj['remarks'] = results[0]['remarks'];
     }
 
     statusSheet.addRow(obj);
